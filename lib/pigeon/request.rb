@@ -2,6 +2,20 @@
 
 module Pigeon
   class Request
+    attr_reader :method, :target, :host
+
+    def self.parse(raw_request)
+      request_line, *header_lines = raw_request.split(Pigeon::CRLF)
+      method, target, version = request_line.split(' ')
+      headers = header_lines.map do |line|
+        name, value = line.split(':', 2)
+        [name.downcase, value.strip]
+      end
+      host = headers.find { |name, value| name == 'host' }.last
+
+      new(method:, target:, host:)
+    end
+
     def initialize(method:, target:, host:)
       @method = method
       @target = target
