@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+
+Dir.glob(File.expand_path('../test/**/*_test.rb', __dir__)).each do |file|
+  require file
+end
