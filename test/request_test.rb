@@ -6,7 +6,7 @@ require 'pigeon'
 class RequestTest < Minitest::Test
   CRLF = "\r\n"
 
-  def test_get_request_to_http
+  def test_to_http
     request = Pigeon::Request.new(
       method: 'GET',
       target: '/',

@@ -5,3 +5,4 @@ module Pigeon
 end
 
 require_relative 'pigeon/request'
+require_relative 'pigeon/response'

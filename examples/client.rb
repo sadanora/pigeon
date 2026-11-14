@@ -13,6 +13,7 @@ socket = TCPSocket.new('127.0.0.1', 8080)
 
 begin
   socket.write(request.to_http)
+  print socket.read
 ensure
   socket.close
 end
