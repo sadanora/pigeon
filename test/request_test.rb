@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'test_helper'
 require 'pigeon'
 
@@ -21,4 +23,3 @@ class RequestTest < Minitest::Test
     assert_equal expected, request.to_http
   end
 end
-
