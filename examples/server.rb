@@ -6,19 +6,25 @@ require_relative '../lib/pigeon'
 server = TCPServer.new('127.0.0.1', 8080)
 puts 'Waiting on 127.0.0.1:8080...'
 
-client = server.accept
+socket = server.accept
+raw_request = +''
 begin
-  while (line = client.gets)
-    print line
+  while (line = socket.gets)
+    raw_request << line
     break if line == "\r\n"
   end
+
+  request = Pigeon::Request.parse(raw_request)
+  puts "Method: #{request.method}"
+  puts "Target: #{request.target}"
+  puts "Host: #{request.host}"
 
   response = Pigeon::Response.new(
     content_type: 'text/plain',
     body: 'Hello'
   )
-  client.write(response.to_http)
+  socket.write(response.to_http)
 ensure
-  client.close
+  socket.close
   server.close
 end
