@@ -65,4 +65,79 @@ class RequestTest < Minitest::Test
     assert_equal 'localhost:8080', request.host
     assert_equal '/hello', request.target
   end
+
+  def test_parse_rejects_request_line_with_extra_parts
+    raw_request = <<~HTTP.gsub("\n", CRLF)
+      GET / HTTP/1.1 extra
+      Host: localhost:8080
+
+    HTTP
+
+    assert_raises(Pigeon::ParseError) do
+      Pigeon::Request.parse(raw_request)
+    end
+  end
+
+  def test_parse_rejects_incomplete_request_line
+    raw_request = <<~HTTP.gsub("\n", CRLF)
+      GET /
+      Host: localhost:8080
+
+    HTTP
+
+    assert_raises(Pigeon::ParseError) do
+      Pigeon::Request.parse(raw_request)
+    end
+  end
+
+  def test_parse_rejects_header_name_with_space
+    raw_request = <<~HTTP.gsub("\n", CRLF)
+      GET / HTTP/1.1
+      Host: localhost:8080
+      Invalid Header: value
+
+    HTTP
+
+    assert_raises(Pigeon::ParseError) do
+      Pigeon::Request.parse(raw_request)
+    end
+  end
+
+  def test_parse_rejects_header_with_empty_name
+    raw_request = <<~HTTP.gsub("\n", CRLF)
+      GET / HTTP/1.1
+      Host: localhost:8080
+      : value
+
+    HTTP
+
+    assert_raises(Pigeon::ParseError) do
+      Pigeon::Request.parse(raw_request)
+    end
+  end
+
+  def test_parse_rejects_header_without_colon
+    raw_request = <<~HTTP.gsub("\n", CRLF)
+      GET / HTTP/1.1
+      Host: localhost:8080
+      Invalid-Header
+
+    HTTP
+
+    assert_raises(Pigeon::ParseError) do
+      Pigeon::Request.parse(raw_request)
+    end
+  end
+
+  def test_parse_rejects_missing_host
+    raw_request = <<~HTTP.gsub("\n", CRLF)
+      GET / HTTP/1.1
+      Connection: close
+
+    HTTP
+
+    assert_raises(Pigeon::ParseError) do
+      Pigeon::Request.parse(raw_request)
+    end
+  end
 end

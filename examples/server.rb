@@ -14,17 +14,29 @@ begin
     break if line == "\r\n"
   end
 
-  request = Pigeon::Request.parse(raw_request)
-  puts "Method: #{request.method}"
-  puts "Target: #{request.target}"
-  puts "Host: #{request.host}"
+  begin
+    request = Pigeon::Request.parse(raw_request)
+    puts "Method: #{request.method}"
+    puts "Target: #{request.target}"
+    puts "Host: #{request.host}"
 
-  response = Pigeon::Response.new(
-    status_code: 200,
-    reason_phrase: 'OK',
-    content_type: 'text/plain',
-    body: 'Hello'
-  )
+    response = Pigeon::Response.new(
+      status_code: 200,
+      reason_phrase: 'OK',
+      content_type: 'text/plain',
+      body: 'Hello'
+    )
+  rescue Pigeon::ParseError => error
+    warn error.message
+
+    response = Pigeon::Response.new(
+      status_code: 400,
+      reason_phrase: 'Bad Request',
+      content_type: 'text/plain',
+      body: 'Bad Request'
+    )
+  end
+
   socket.write(response.to_http)
 ensure
   socket.close
