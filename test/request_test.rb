@@ -52,7 +52,7 @@ class RequestTest < Minitest::Test
   end
 
   def test_parse_with_host_after_connection
-     raw_request = <<~HTTP.gsub("\n", CRLF)
+    raw_request = <<~HTTP.gsub("\n", CRLF)
       GET /hello HTTP/1.1
       Connection: close
       Host: localhost:8080
@@ -64,5 +64,5 @@ class RequestTest < Minitest::Test
     assert_equal 'GET', request.method
     assert_equal 'localhost:8080', request.host
     assert_equal '/hello', request.target
- end
+  end
 end

@@ -20,6 +20,8 @@ begin
   puts "Host: #{request.host}"
 
   response = Pigeon::Response.new(
+    status_code: 200,
+    reason_phrase: 'OK',
     content_type: 'text/plain',
     body: 'Hello'
   )

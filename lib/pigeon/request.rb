@@ -6,12 +6,12 @@ module Pigeon
 
     def self.parse(raw_request)
       request_line, *header_lines = raw_request.split(Pigeon::CRLF)
-      method, target, version = request_line.split(' ')
+      method, target, = request_line.split
       headers = header_lines.map do |line|
         name, value = line.split(':', 2)
         [name.downcase, value.strip]
       end
-      host = headers.find { |name, value| name == 'host' }.last
+      host = headers.find { |name, _value| name == 'host' }.last
 
       new(method:, target:, host:)
     end
