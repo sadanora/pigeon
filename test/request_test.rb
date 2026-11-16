@@ -3,141 +3,151 @@
 require_relative 'test_helper'
 require 'pigeon'
 
-class RequestTest < Minitest::Test
-  CRLF = "\r\n"
+describe Pigeon::Request do
+  let(:crlf) { "\r\n" }
 
-  def test_to_http
-    request = Pigeon::Request.new(
-      method: 'GET',
-      target: '/',
-      host: 'localhost:8080'
-    )
+  describe '#to_http' do
+    it 'serializes a GET request' do
+      request = Pigeon::Request.new(
+        method: 'GET',
+        target: '/',
+        host: 'localhost:8080'
+      )
 
-    expected = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      Host: localhost:8080
-      Connection: close
+      expected = <<~HTTP.gsub("\n", crlf)
+        GET / HTTP/1.1
+        Host: localhost:8080
+        Connection: close
 
-    HTTP
+      HTTP
 
-    assert_equal expected, request.to_http
-  end
-
-  def test_parse_get_request
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      Host: localhost:8080
-      Connection: close
-
-    HTTP
-
-    request = Pigeon::Request.parse(raw_request)
-
-    assert_equal 'GET', request.method
-    assert_equal '/', request.target
-    assert_equal 'localhost:8080', request.host
-  end
-
-  def test_parse_with_mixed_case_host_header
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      hOsT: localhost:8080
-      Connection: close
-
-    HTTP
-
-    request = Pigeon::Request.parse(raw_request)
-
-    assert_equal 'localhost:8080', request.host
-  end
-
-  def test_parse_with_host_after_connection
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET /hello HTTP/1.1
-      Connection: close
-      Host: localhost:8080
-
-    HTTP
-
-    request = Pigeon::Request.parse(raw_request)
-
-    assert_equal 'GET', request.method
-    assert_equal 'localhost:8080', request.host
-    assert_equal '/hello', request.target
-  end
-
-  def test_parse_rejects_request_line_with_extra_parts
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1 extra
-      Host: localhost:8080
-
-    HTTP
-
-    assert_raises(Pigeon::ParseError) do
-      Pigeon::Request.parse(raw_request)
+      assert_equal expected, request.to_http
     end
   end
 
-  def test_parse_rejects_incomplete_request_line
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET /
-      Host: localhost:8080
+  describe '.parse' do
+    describe 'with a valid request' do
+      it 'extracts the method, target, and host' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          Host: localhost:8080
+          Connection: close
 
-    HTTP
+        HTTP
 
-    assert_raises(Pigeon::ParseError) do
-      Pigeon::Request.parse(raw_request)
+        request = Pigeon::Request.parse(raw_request)
+
+        assert_equal 'GET', request.method
+        assert_equal '/', request.target
+        assert_equal 'localhost:8080', request.host
+      end
+
+      it 'accepts mixed-case Host header names' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          hOsT: localhost:8080
+          Connection: close
+
+        HTTP
+
+        request = Pigeon::Request.parse(raw_request)
+
+        assert_equal 'localhost:8080', request.host
+      end
+
+      it 'finds Host after Connection' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET /hello HTTP/1.1
+          Connection: close
+          Host: localhost:8080
+
+        HTTP
+
+        request = Pigeon::Request.parse(raw_request)
+
+        assert_equal 'GET', request.method
+        assert_equal 'localhost:8080', request.host
+        assert_equal '/hello', request.target
+      end
     end
-  end
 
-  def test_parse_rejects_header_name_with_space
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      Host: localhost:8080
-      Invalid Header: value
+    describe 'with an invalid request line' do
+      it 'rejects extra components' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1 extra
+          Host: localhost:8080
 
-    HTTP
+        HTTP
 
-    assert_raises(Pigeon::ParseError) do
-      Pigeon::Request.parse(raw_request)
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
+
+      it 'rejects missing components' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET /
+          Host: localhost:8080
+
+        HTTP
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
     end
-  end
 
-  def test_parse_rejects_header_with_empty_name
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      Host: localhost:8080
-      : value
+    describe 'with invalid headers' do
+      it 'rejects field names containing spaces' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          Host: localhost:8080
+          Invalid Header: value
 
-    HTTP
+        HTTP
 
-    assert_raises(Pigeon::ParseError) do
-      Pigeon::Request.parse(raw_request)
-    end
-  end
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
 
-  def test_parse_rejects_header_without_colon
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      Host: localhost:8080
-      Invalid-Header
+      it 'rejects empty field names' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          Host: localhost:8080
+          : value
 
-    HTTP
+        HTTP
 
-    assert_raises(Pigeon::ParseError) do
-      Pigeon::Request.parse(raw_request)
-    end
-  end
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
 
-  def test_parse_rejects_missing_host
-    raw_request = <<~HTTP.gsub("\n", CRLF)
-      GET / HTTP/1.1
-      Connection: close
+      it 'rejects header lines without a colon' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          Host: localhost:8080
+          Invalid-Header
 
-    HTTP
+        HTTP
 
-    assert_raises(Pigeon::ParseError) do
-      Pigeon::Request.parse(raw_request)
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
+
+      it 'rejects a missing Host header' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          Connection: close
+
+        HTTP
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
     end
   end
 end
