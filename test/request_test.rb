@@ -95,6 +95,30 @@ describe Pigeon::Request do
           Pigeon::Request.parse(raw_request)
         end
       end
+
+      it 'rejects invalid HTTP version' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / INVALID
+          HOST: localhost:8080
+
+        HTTP
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
+
+      it 'rejects an HTTP version without a minor number' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1
+          Host: localhost:8080
+
+        HTTP
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
     end
 
     describe 'with invalid headers' do

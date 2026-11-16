@@ -9,12 +9,13 @@ module Pigeon
       'Request-URI',
       'HTTP-Version'
     ].freeze
-
     TOKEN_PATTERN = /\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z/
+    HTTP_VERSION_PATTERN = /\AHTTP\/[0-9]+\.[0-9]+\z/
 
     def self.parse(raw_request)
       request_line, *header_lines = raw_request.split(Pigeon::CRLF)
-      method, target, _version = parse_request_line(request_line)
+      method, target, http_version = parse_request_line(request_line)
+      validate_http_version(http_version)
       headers = parse_headers(header_lines)
       host = fetch_host(headers)
 
@@ -58,6 +59,13 @@ module Pigeon
       host_header.last
     end
     private_class_method :fetch_host
+
+    def self.validate_http_version(http_version)
+      unless HTTP_VERSION_PATTERN.match?(http_version)
+        raise Pigeon::ParseError, "Invalid HTTP version"
+      end
+    end
+    private_class_method :validate_http_version
 
     def initialize(method:, target:, host:)
       @method = method
