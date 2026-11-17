@@ -26,8 +26,8 @@ begin
       content_type: 'text/plain',
       body: 'Hello'
     )
-  rescue Pigeon::ParseError => error
-    warn error.message
+  rescue Pigeon::ParseError => e
+    warn e.message
 
     response = Pigeon::Response.new(
       status_code: 400,

@@ -5,7 +5,7 @@ module Pigeon
     attr_reader :http_version, :status_code, :reason_phrase, :content_type, :body
 
     STATUS_CODE_PATTERN = /\A[0-9]{3}\z/
-    HTTP_VERSION_PATTERN = /\AHTTP\/[0-9]+\.[0-9]+\z/
+    HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
     def self.parse(raw_response)
       head, body = raw_response.split(Pigeon::CRLF * 2, 2)
@@ -35,16 +35,16 @@ module Pigeon
     private_class_method :parse_headers
 
     def self.validate_http_version(http_version)
-      unless HTTP_VERSION_PATTERN.match?(http_version)
-        raise Pigeon::ParseError, "Invalid HTTP version"
-      end
+      return if HTTP_VERSION_PATTERN.match?(http_version)
+
+      raise Pigeon::ParseError, 'Invalid HTTP version'
     end
     private_class_method :validate_http_version
 
     def self.validate_status_code(status_code)
-      unless STATUS_CODE_PATTERN.match?(status_code)
-        raise Pigeon::ParseError, "Invalid Status Code"
-      end
+      return if STATUS_CODE_PATTERN.match?(status_code)
+
+      raise Pigeon::ParseError, 'Invalid Status Code'
     end
     private_class_method :validate_status_code
 

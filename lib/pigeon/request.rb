@@ -4,13 +4,13 @@ module Pigeon
   class Request
     attr_reader :method, :target, :http_version, :host
 
-    REQUEST_LINE_COMPONENTS = [
-      'Method',
-      'Request-URI',
-      'HTTP-Version'
+    REQUEST_LINE_COMPONENTS = %w[
+      Method
+      Request-URI
+      HTTP-Version
     ].freeze
     TOKEN_PATTERN = /\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z/
-    HTTP_VERSION_PATTERN = /\AHTTP\/[0-9]+\.[0-9]+\z/
+    HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
     def self.parse(raw_request)
       request_line, *header_lines = raw_request.split(Pigeon::CRLF)
@@ -51,19 +51,17 @@ module Pigeon
 
     def self.fetch_host(headers)
       host_header = headers.find { |name, _value| name == 'host' }
-      
-      unless host_header
-        raise Pigeon::ParseError, "Header must contain host"
-      end
+
+      raise Pigeon::ParseError, 'Header must contain host' unless host_header
 
       host_header.last
     end
     private_class_method :fetch_host
 
     def self.validate_http_version(http_version)
-      unless HTTP_VERSION_PATTERN.match?(http_version)
-        raise Pigeon::ParseError, "Invalid HTTP version"
-      end
+      return if HTTP_VERSION_PATTERN.match?(http_version)
+
+      raise Pigeon::ParseError, 'Invalid HTTP version'
     end
     private_class_method :validate_http_version
 
