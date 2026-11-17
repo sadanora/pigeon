@@ -4,6 +4,9 @@ AllCops:
 Style/Documentation:
   Enabled: false
 
+Style/KeywordParametersOrder:
+  Enabled: false
+
 Metrics/MethodLength:
   Enabled: false
 

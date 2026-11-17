@@ -27,6 +27,28 @@ describe Pigeon::Response do
 
       assert_equal expected, response.to_http
     end
+
+    it 'serializes the specified HTTP version' do
+      header = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.0 200 OK
+        Content-Type: text/plain
+        Content-Length: 5
+        Connection: close
+
+      HTTP
+      body = 'Hello'
+      expected = header + body
+
+      response = Pigeon::Response.new(
+        http_version: 'HTTP/1.0',
+        status_code: 200,
+        reason_phrase: 'OK',
+        content_type: 'text/plain',
+        body: 'Hello'
+      )
+
+      assert_equal expected, response.to_http
+    end
   end
 
   describe '.parse' do
@@ -75,6 +97,22 @@ describe Pigeon::Response do
       response = Pigeon::Response.parse(header + body)
 
       assert_equal "Hello\r\nWorld", response.body
+    end
+
+    it 'preserves the HTTP version' do
+      header = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.0 200 OK
+        Content-Type: text/plain
+        Content-Length: 5
+        Connection: close
+
+      HTTP
+      body = 'Hello'
+      raw_response = header + body
+
+      response = Pigeon::Response.parse(raw_response)
+
+      assert_equal 'HTTP/1.0', response.http_version
     end
   end
 end
