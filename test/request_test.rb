@@ -23,6 +23,24 @@ describe Pigeon::Request do
 
       assert_equal expected, request.to_http
     end
+
+    it 'preserves the HTTP version' do
+      request = Pigeon::Request.new(
+        method: 'GET',
+        target: '/',
+        http_version: 'HTTP/1.0',
+        host: 'localhost:8080'
+      )
+
+      expected = <<~HTTP.gsub("\n", crlf)
+        GET / HTTP/1.0
+        Host: localhost:8080
+        Connection: close
+
+      HTTP
+
+      assert_equal expected, request.to_http
+    end
   end
 
   describe '.parse' do
@@ -68,6 +86,18 @@ describe Pigeon::Request do
         assert_equal 'GET', request.method
         assert_equal 'localhost:8080', request.host
         assert_equal '/hello', request.target
+      end
+
+      it 'preserves the HTTP version' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.0
+          Host: localhost:8080
+
+        HTTP
+
+        request = Pigeon::Request.parse(raw_request)
+
+        assert_equal 'HTTP/1.0', request.http_version
       end
     end
 

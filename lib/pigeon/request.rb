@@ -2,7 +2,7 @@
 
 module Pigeon
   class Request
-    attr_reader :method, :target, :host
+    attr_reader :method, :target, :http_version, :host
 
     REQUEST_LINE_COMPONENTS = [
       'Method',
@@ -19,7 +19,7 @@ module Pigeon
       headers = parse_headers(header_lines)
       host = fetch_host(headers)
 
-      new(method:, target:, host:)
+      new(method:, target:, http_version:, host:)
     end
 
     def self.parse_request_line(request_line)
@@ -67,9 +67,10 @@ module Pigeon
     end
     private_class_method :validate_http_version
 
-    def initialize(method:, target:, host:)
+    def initialize(method:, target:, http_version: 'HTTP/1.1', host:)
       @method = method
       @target = target
+      @http_version = http_version
       @host = host
     end
 
@@ -84,7 +85,7 @@ module Pigeon
     # ref: https://www.rfc-editor.org/rfc/rfc2616.html#section-5.1
     def to_http
       <<~HTTP.gsub("\n", Pigeon::CRLF)
-        #{@method} #{@target} HTTP/1.1
+        #{@method} #{@target} #{@http_version}
         Host: #{@host}
         Connection: close
 
