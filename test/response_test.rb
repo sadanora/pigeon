@@ -52,67 +52,151 @@ describe Pigeon::Response do
   end
 
   describe '.parse' do
-    it 'extracts the status, content type, and body' do
-      header = <<~HTTP.gsub("\n", crlf)
-        HTTP/1.1 200 OK
-        Content-Type: text/plain
-        Content-Length: 5
-        Connection: close
+    describe 'with a valid response' do
+      it 'extracts the status, content type, and body' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
 
-      HTTP
-      body = 'Hello'
-      raw_response = header + body
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
 
-      response = Pigeon::Response.parse(raw_response)
-      assert_equal 200, response.status_code
-      assert_equal 'OK', response.reason_phrase
-      assert_equal 'text/plain', response.content_type
-      assert_equal 'Hello', response.body
+        response = Pigeon::Response.parse(raw_response)
+        assert_equal 200, response.status_code
+        assert_equal 'OK', response.reason_phrase
+        assert_equal 'text/plain', response.content_type
+        assert_equal 'Hello', response.body
+      end
+
+      it 'preserves multiword reason phrases' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 404 Not Found
+          Content-Type: text/plain
+          Content-Length: 9
+          Connection: close
+
+        HTTP
+        body = 'Not Found'
+        response = Pigeon::Response.parse(header + body)
+
+        assert_equal 404, response.status_code
+        assert_equal 'Not Found', response.reason_phrase
+      end
+
+      it 'preserves CRLF within the body' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 12
+          Connection: close
+
+        HTTP
+        body = "Hello\r\nWorld"
+        response = Pigeon::Response.parse(header + body)
+
+        assert_equal "Hello\r\nWorld", response.body
+      end
+
+      it 'preserves the HTTP version' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.0 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        response = Pigeon::Response.parse(raw_response)
+
+        assert_equal 'HTTP/1.0', response.http_version
+      end
     end
 
-    it 'preserves multiword reason phrases' do
-      header = <<~HTTP.gsub("\n", crlf)
-        HTTP/1.1 404 Not Found
-        Content-Type: text/plain
-        Content-Length: 9
-        Connection: close
+    describe 'with an invalid status line' do
+      it 'rejects a status code with fewer than three digits' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 20 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
 
-      HTTP
-      body = 'Not Found'
-      response = Pigeon::Response.parse(header + body)
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
 
-      assert_equal 404, response.status_code
-      assert_equal 'Not Found', response.reason_phrase
-    end
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
 
-    it 'preserves CRLF within the body' do
-      header = <<~HTTP.gsub("\n", crlf)
-        HTTP/1.1 200 OK
-        Content-Type: text/plain
-        Content-Length: 12
-        Connection: close
+      it 'rejects a status code with more than three digits' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 2000 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
 
-      HTTP
-      body = "Hello\r\nWorld"
-      response = Pigeon::Response.parse(header + body)
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
 
-      assert_equal "Hello\r\nWorld", response.body
-    end
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
 
-    it 'preserves the HTTP version' do
-      header = <<~HTTP.gsub("\n", crlf)
-        HTTP/1.0 200 OK
-        Content-Type: text/plain
-        Content-Length: 5
-        Connection: close
+      it 'rejects a nonnumeric status code' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 abc OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
 
-      HTTP
-      body = 'Hello'
-      raw_response = header + body
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
 
-      response = Pigeon::Response.parse(raw_response)
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
 
-      assert_equal 'HTTP/1.0', response.http_version
+      it 'rejects an invalid HTTP version' do
+        header = <<~HTTP.gsub("\n", crlf)
+          INVALID 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
+
+      it 'rejects an HTTP version without a minor number' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
     end
   end
 end
