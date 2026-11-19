@@ -211,5 +211,19 @@ describe Pigeon::Request do
         end
       end
     end
+
+    describe 'with an incomplete message' do
+      it 'rejects a missing header terminator' do
+        raw_request = <<~HTTP.gsub("\n", crlf)
+          GET / HTTP/1.1
+          Host: localhost:8080
+          Connection: close
+        HTTP
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Request.parse(raw_request)
+        end
+      end
+    end
   end
 end

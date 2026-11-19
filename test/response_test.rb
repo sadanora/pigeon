@@ -259,5 +259,20 @@ describe Pigeon::Response do
         end
       end
     end
+
+    describe 'with an incomplete message' do
+      it 'rejects a missing header terminator' do
+        raw_response = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 0
+          Connection: close
+        HTTP
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
+    end
   end
 end

@@ -15,7 +15,8 @@ module Pigeon
     def self.parse(raw_request)
       raise Pigeon::ParseError, "Empty request" if raw_request.empty?
 
-      request_line, *header_lines = raw_request.split(Pigeon::CRLF)
+      head, _body = split_message(raw_request)
+      request_line, *header_lines = head.split(Pigeon::CRLF)
       method, target, http_version = parse_request_line(request_line)
       validate_http_version(http_version)
       headers = parse_headers(header_lines)
@@ -23,6 +24,15 @@ module Pigeon
 
       new(method:, target:, http_version:, host:)
     end
+
+    def self.split_message(raw_request)
+      head, separator, body = raw_request.partition(Pigeon::CRLF * 2)
+
+      raise Pigeon::ParseError, 'Missing header terminator' if separator.empty?
+
+      [head, body]
+    end
+    private_class_method :split_message
 
     def self.parse_request_line(request_line)
       parts = request_line.split

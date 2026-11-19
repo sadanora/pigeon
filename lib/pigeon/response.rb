@@ -11,7 +11,7 @@ module Pigeon
     def self.parse(raw_response)
       raise Pigeon::ParseError, "Empty response" if raw_response.empty?
 
-      head, body = raw_response.split(Pigeon::CRLF * 2, 2)
+      head, body = split_message(raw_response)
       status_line, *header_lines = head.split(Pigeon::CRLF)
       http_version, status_code, reason_phrase = parse_status_line(status_line)
       headers = parse_headers(header_lines)
@@ -19,6 +19,15 @@ module Pigeon
 
       new(http_version:, status_code:, reason_phrase:, content_type:, body:)
     end
+
+    def self.split_message(raw_response)
+      head, separator, body = raw_response.partition(Pigeon::CRLF * 2)
+
+      raise Pigeon::ParseError, 'Missing header terminator' if separator.empty?
+
+      [head, body]
+    end
+    private_class_method :split_message
 
     def self.parse_status_line(status_line)
       http_version, status_code, reason_phrase = status_line.split(' ', 3)
