@@ -198,5 +198,58 @@ describe Pigeon::Response do
         end
       end
     end
+
+    describe 'with invalid headers' do
+      it 'rejects header lines without a colon' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+          Invalid-Header
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
+
+      it 'rejects empty field names' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+          : value
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
+
+      it 'rejects field names containing spaces' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+          Invalid Header: value
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+      end
+    end
   end
 end

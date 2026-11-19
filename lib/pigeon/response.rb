@@ -4,6 +4,7 @@ module Pigeon
   class Response
     attr_reader :http_version, :status_code, :reason_phrase, :content_type, :body
 
+    TOKEN_PATTERN = /\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z/
     STATUS_CODE_PATTERN = /\A[0-9]{3}\z/
     HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
@@ -28,7 +29,15 @@ module Pigeon
 
     def self.parse_headers(header_lines)
       header_lines.map do |line|
-        name, value = line.split(':', 2)
+        name, separator, value = line.partition(':')
+        if name.empty?
+          raise Pigeon::ParseError, 'Header must have a field name'
+        elsif separator.empty?
+          raise Pigeon::ParseError, 'Header line must contain a colon'
+        elsif !TOKEN_PATTERN.match?(name)
+          raise Pigeon::ParseError, 'Header field name must be a token'
+        end
+
         [name.downcase, value.strip]
       end
     end
