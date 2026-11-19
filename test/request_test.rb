@@ -109,9 +109,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Request line must contain Method, Request-URI, HTTP-Version', error.message
       end
 
       it 'rejects missing components' do
@@ -121,9 +123,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Request line must contain Method, Request-URI, HTTP-Version', error.message
       end
 
       it 'rejects invalid HTTP version' do
@@ -133,9 +137,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Invalid HTTP version', error.message
       end
 
       it 'rejects an HTTP version without a minor number' do
@@ -145,9 +151,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Invalid HTTP version', error.message
       end
     end
 
@@ -160,9 +168,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Header field name must be a token', error.message
       end
 
       it 'rejects empty field names' do
@@ -173,9 +183,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Header must have a field name', error.message
       end
 
       it 'rejects header lines without a colon' do
@@ -186,9 +198,11 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Header line must contain a colon', error.message
       end
 
       it 'rejects a missing Host header' do
@@ -198,17 +212,21 @@ describe Pigeon::Request do
 
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Header must contain host', error.message
       end
     end
 
     describe 'with empty input' do
       it 'rejects an empty string' do
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse('')
         end
+
+        assert_equal 'Empty request', error.message
       end
     end
 
@@ -220,9 +238,11 @@ describe Pigeon::Request do
           Connection: close
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Request.parse(raw_request)
         end
+
+        assert_equal 'Missing header terminator', error.message
       end
     end
   end

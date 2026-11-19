@@ -129,9 +129,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Invalid Status Code', error.message
       end
 
       it 'rejects a status code with more than three digits' do
@@ -145,9 +147,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Invalid Status Code', error.message
       end
 
       it 'rejects a nonnumeric status code' do
@@ -161,9 +165,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Invalid Status Code', error.message
       end
 
       it 'rejects an invalid HTTP version' do
@@ -177,9 +183,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Invalid HTTP version', error.message
       end
 
       it 'rejects an HTTP version without a minor number' do
@@ -193,9 +201,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Invalid HTTP version', error.message
       end
     end
 
@@ -212,9 +222,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Header line must contain a colon', error.message
       end
 
       it 'rejects empty field names' do
@@ -229,9 +241,11 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Header must have a field name', error.message
       end
 
       it 'rejects field names containing spaces' do
@@ -246,17 +260,21 @@ describe Pigeon::Response do
         body = 'Hello'
         raw_response = header + body
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Header field name must be a token', error.message
       end
     end
 
     describe 'with empty input' do
       it 'rejects an empty string' do
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse('')
         end
+
+        assert_equal 'Empty response', error.message
       end
     end
 
@@ -269,9 +287,11 @@ describe Pigeon::Response do
           Connection: close
         HTTP
 
-        assert_raises(Pigeon::ParseError) do
+        error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.parse(raw_response)
         end
+
+        assert_equal 'Missing header terminator', error.message
       end
     end
   end
