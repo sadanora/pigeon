@@ -9,6 +9,8 @@ module Pigeon
     HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
     def self.parse(raw_response)
+      raise Pigeon::ParseError, "Empty response" if raw_response.empty?
+
       head, body = raw_response.split(Pigeon::CRLF * 2, 2)
       status_line, *header_lines = head.split(Pigeon::CRLF)
       http_version, status_code, reason_phrase = parse_status_line(status_line)

@@ -13,6 +13,8 @@ module Pigeon
     HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
     def self.parse(raw_request)
+      raise Pigeon::ParseError, "Empty request" if raw_request.empty?
+
       request_line, *header_lines = raw_request.split(Pigeon::CRLF)
       method, target, http_version = parse_request_line(request_line)
       validate_http_version(http_version)

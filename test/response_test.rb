@@ -251,5 +251,13 @@ describe Pigeon::Response do
         end
       end
     end
+
+    describe 'with empty input' do
+      it 'rejects an empty string' do
+        assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse('')
+        end
+      end
+    end
   end
 end
