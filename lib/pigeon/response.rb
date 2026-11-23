@@ -15,7 +15,7 @@ module Pigeon
       status_line, *header_lines = head.split(Pigeon::CRLF)
       http_version, status_code, reason_phrase = parse_status_line(status_line)
       headers = parse_headers(header_lines)
-      content_type = headers.find { |name, _value| name == 'content-type' }.last
+      content_type = headers.find { |name, _value| name == 'content-type' }&.last
 
       new(http_version:, status_code:, reason_phrase:, content_type:, body:)
     end
@@ -91,14 +91,14 @@ module Pigeon
     #                 CRLF
     #                 [ message-body ]          ; Section 7.2
     def to_http
-      header = <<~HTTP.gsub("\n", Pigeon::CRLF)
-        #{@http_version} #{@status_code} #{@reason_phrase}
-        Content-Type: #{@content_type}
-        Content-Length: #{@body.bytesize}
-        Connection: close
+      headers = [
+        "#{@http_version} #{@status_code} #{@reason_phrase}",
+        ("Content-Type: #{@content_type}" unless @content_type.nil?),
+        "Content-Length: #{@body.bytesize}",
+        'Connection: close'
+      ].compact
 
-      HTTP
-      header + @body
+      headers.join(Pigeon::CRLF) + (Pigeon::CRLF * 2) + @body
     end
   end
 end

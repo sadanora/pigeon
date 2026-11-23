@@ -49,10 +49,47 @@ describe Pigeon::Response do
 
       assert_equal expected, response.to_http
     end
+
+    it 'serializes without Content-Type' do
+      header = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.1 200 OK
+        Content-Length: 5
+        Connection: close
+
+      HTTP
+      body = 'Hello'
+      expected = header + body
+
+      response = Pigeon::Response.new(
+        http_version: 'HTTP/1.1',
+        status_code: 200,
+        reason_phrase: 'OK',
+        content_type: nil,
+        body: 'Hello'
+      )
+
+      assert_equal expected, response.to_http
+    end
   end
 
   describe '.parse' do
     describe 'with a valid response' do
+      it 'accepts a response without Content-Type' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Length: 5
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        response = Pigeon::Response.parse(raw_response)
+
+        assert_nil response.content_type
+        assert_equal 'Hello', response.body
+      end
+
       it 'extracts the status, content type, and body' do
         header = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK
