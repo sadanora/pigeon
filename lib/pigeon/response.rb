@@ -6,6 +6,7 @@ module Pigeon
 
     TOKEN_PATTERN = /\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z/
     STATUS_CODE_PATTERN = /\A[0-9]{3}\z/
+    CONTENT_LENGTH_PATTERN = /\A[0-9]+\z/
     HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
     def self.parse(raw_response)
@@ -17,6 +18,7 @@ module Pigeon
       headers = parse_headers(header_lines)
       content_type = headers.find { |name, _value| name == 'content-type' }&.last
       content_length = parse_content_length(headers)
+      validate_body_length(body, content_length, status_code:, headers:)
 
       new(
         http_version:,
@@ -46,6 +48,20 @@ module Pigeon
     end
     private_class_method :parse_status_line
 
+    def self.validate_http_version(http_version)
+      return if HTTP_VERSION_PATTERN.match?(http_version)
+
+      raise Pigeon::ParseError, 'Invalid HTTP version'
+    end
+    private_class_method :validate_http_version
+
+    def self.validate_status_code(status_code)
+      return if STATUS_CODE_PATTERN.match?(status_code)
+
+      raise Pigeon::ParseError, 'Invalid Status Code'
+    end
+    private_class_method :validate_status_code
+
     def self.parse_headers(header_lines)
       header_lines.map do |line|
         name, separator, value = line.partition(':')
@@ -64,23 +80,30 @@ module Pigeon
 
     def self.parse_content_length(headers)
       value = headers.find { |name, _value| name == 'content-length' }&.last
-      value.nil? ? nil : Integer(value, 10)
+      return nil if value.nil?
+
+      validate_content_length(value)
+
+      Integer(value, 10)
     end
     private_class_method :parse_content_length
 
-    def self.validate_http_version(http_version)
-      return if HTTP_VERSION_PATTERN.match?(http_version)
+    def self.validate_content_length(value)
+      return if CONTENT_LENGTH_PATTERN.match?(value)
 
-      raise Pigeon::ParseError, 'Invalid HTTP version'
+      raise Pigeon::ParseError, 'Invalid Content-Length'
     end
-    private_class_method :validate_http_version
+    private_class_method :validate_content_length
 
-    def self.validate_status_code(status_code)
-      return if STATUS_CODE_PATTERN.match?(status_code)
+    def self.validate_body_length(body, content_length, status_code:, headers:)
+      return unless status_code == 200
+      return if content_length.nil?
+      return if headers.any? { |name, _| name == 'transfer-encoding' }
+      return if body.bytesize >= content_length
 
-      raise Pigeon::ParseError, 'Invalid Status Code'
+      raise Pigeon::ParseError, 'Body is shorter than Content-Length'
     end
-    private_class_method :validate_status_code
+    private_class_method :validate_body_length
 
     def initialize(
       http_version: 'HTTP/1.1',

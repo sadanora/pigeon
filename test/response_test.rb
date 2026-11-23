@@ -294,6 +294,60 @@ describe Pigeon::Response do
     end
 
     describe 'with invalid headers' do
+      it 'rejects a nonnumeric Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: abc
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+
+        assert_equal 'Invalid Content-Length', error.message
+      end
+
+      it 'rejects a negative Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: -5
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+
+        assert_equal 'Invalid Content-Length', error.message
+      end
+
+      it 'rejects an empty Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length:
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+
+        assert_equal 'Invalid Content-Length', error.message
+      end
+
       it 'rejects header lines without a colon' do
         header = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK
@@ -363,6 +417,24 @@ describe Pigeon::Response do
     end
 
     describe 'with an incomplete message' do
+      it 'rejects a body shorter than the declared Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 6
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.parse(raw_response)
+        end
+
+        assert_equal 'Body is shorter than Content-Length', error.message
+      end
+
       it 'rejects a missing header terminator' do
         raw_response = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK
