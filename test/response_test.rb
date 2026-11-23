@@ -74,6 +74,22 @@ describe Pigeon::Response do
 
   describe '.parse' do
     describe 'with a valid response' do
+      it 'extracts Content-Length as an integer' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        response = Pigeon::Response.parse(raw_response)
+
+        assert_equal 5, response.content_length
+      end
+
       it 'accepts a response without Content-Type' do
         header = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK
@@ -88,6 +104,37 @@ describe Pigeon::Response do
 
         assert_nil response.content_type
         assert_equal 'Hello', response.body
+      end
+
+      it 'does not infer Content-Length from the body when the header is absent' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Connection: close
+
+        HTTP
+        body = 'Hello'
+        raw_response = header + body
+
+        response = Pigeon::Response.parse(raw_response)
+
+        assert_nil response.content_length
+        assert_equal 'Hello', response.body
+      end
+
+      it 'preserves a declared Content-Length of zero' do
+        raw_response = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 0
+          Connection: close
+
+        HTTP
+
+        response = Pigeon::Response.parse(raw_response)
+
+        assert_equal 0, response.content_length
+        assert_equal '', response.body
       end
 
       it 'extracts the status, content type, and body' do

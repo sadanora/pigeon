@@ -2,7 +2,7 @@
 
 module Pigeon
   class Response
-    attr_reader :http_version, :status_code, :reason_phrase, :content_type, :body
+    attr_reader :http_version, :status_code, :reason_phrase, :content_type, :content_length, :body
 
     TOKEN_PATTERN = /\A[!#$%&'*+\-.^_`|~0-9A-Za-z]+\z/
     STATUS_CODE_PATTERN = /\A[0-9]{3}\z/
@@ -16,8 +16,16 @@ module Pigeon
       http_version, status_code, reason_phrase = parse_status_line(status_line)
       headers = parse_headers(header_lines)
       content_type = headers.find { |name, _value| name == 'content-type' }&.last
+      content_length = parse_content_length(headers)
 
-      new(http_version:, status_code:, reason_phrase:, content_type:, body:)
+      new(
+        http_version:,
+        status_code:,
+        reason_phrase:,
+        content_type:,
+        content_length:,
+        body:
+      )
     end
 
     def self.split_message(raw_response)
@@ -54,6 +62,12 @@ module Pigeon
     end
     private_class_method :parse_headers
 
+    def self.parse_content_length(headers)
+      value = headers.find { |name, _value| name == 'content-length' }&.last
+      value.nil? ? nil : Integer(value, 10)
+    end
+    private_class_method :parse_content_length
+
     def self.validate_http_version(http_version)
       return if HTTP_VERSION_PATTERN.match?(http_version)
 
@@ -73,12 +87,14 @@ module Pigeon
       status_code:,
       reason_phrase:,
       content_type:,
+      content_length: nil,
       body:
     )
       @http_version = http_version
       @status_code = status_code
       @reason_phrase = reason_phrase
       @content_type = content_type
+      @content_length = content_length
       @body = body
     end
 
