@@ -8,37 +8,142 @@ describe Pigeon::Response do
   let(:crlf) { "\r\n" }
 
   describe '.read' do
-    it 'reads a Content-Length-framed response from an IO' do
-      header = <<~HTTP.gsub("\n", crlf)
-        HTTP/1.1 200 OK
-        Content-Type: text/plain
-        Content-Length: 5
+    describe 'with a valid response' do
+      it 'reads a Content-Length-framed response from an IO' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
 
-      HTTP
-      body = 'Hello'
-      io = StringIO.new(header + body)
+        HTTP
+        body = 'Hello'
+        io = StringIO.new(header + body)
 
-      response = Pigeon::Response.read(io)
+        response = Pigeon::Response.read(io)
 
-      assert_equal 'Hello', response.body
+        assert_equal 'Hello', response.body
+      end
+
+      it 'stops reading after the declared number of body bytes' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 15
+
+        HTTP
+        body = 'こんにちわ'
+        following_data = 'unread data'
+        io = StringIO.new(header + body + following_data)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal 'こんにちわ'.bytes, response.body.bytes
+        assert_equal header.bytesize + body.bytesize, io.pos
+        assert_equal 'unread data', io.read
+      end
     end
 
-    it 'stops reading after the declared number of body bytes' do
-      header = <<~HTTP.gsub("\n", crlf)
-        HTTP/1.1 200 OK
-        Content-Type: text/plain
-        Content-Length: 15
+    describe 'with invalid headers' do
+      it 'rejects a nonnumeric Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: abc
 
-      HTTP
-      body = 'こんにちわ'
-      following_data = 'unread data'
-      io = StringIO.new(header + body + following_data)
+        HTTP
+        io = StringIO.new(header + 'Hello')
 
-      response = Pigeon::Response.read(io)
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
 
-      assert_equal 'こんにちわ'.bytes, response.body.bytes
-      assert_equal header.bytesize + body.bytesize, io.pos
-      assert_equal 'unread data', io.read
+        assert_equal 'Invalid Content-Length', error.message
+      end
+    end
+
+    describe 'with unsupported message framing' do
+      it 'rejects a response without Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Connection: close
+
+        HTTP
+        io = StringIO.new(header + 'Hello')
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
+
+        assert_equal 'Content-Length is required by read', error.message
+      end
+
+      it 'rejects a response with Transfer-Encoding' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Transfer-Encoding: chunked
+
+        HTTP
+        body = <<~HTTP.gsub("\n", crlf)
+          5
+          Hello
+          0
+
+        HTTP
+        io = StringIO.new(header + body)
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
+
+        assert_equal 'Transfer-Encoding is not supported by read', error.message
+      end
+    end
+
+    describe 'with empty input' do
+      it 'rejects an empty IO' do
+        io = StringIO.new('')
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
+
+        assert_equal 'Empty response', error.message
+      end
+    end
+
+    describe 'with an incomplete message' do
+      it 'rejects a body shorter than the declared Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 6
+
+        HTTP
+        io = StringIO.new(header + 'Hello')
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
+
+        assert_equal 'Body is shorter than Content-Length', error.message
+      end
+
+      it 'rejects a missing header terminator' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 0
+        HTTP
+        io = StringIO.new(header)
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
+
+        assert_equal 'Missing header terminator', error.message
+      end
     end
   end
 
