@@ -9,8 +9,49 @@ module Pigeon
     CONTENT_LENGTH_PATTERN = /\A[0-9]+\z/
     HTTP_VERSION_PATTERN = %r{\AHTTP/[0-9]+\.[0-9]+\z}
 
+    def self.read(io)
+      head = read_head(io)
+      _status_line, *header_lines = head.split(Pigeon::CRLF)
+      headers = parse_headers(header_lines)
+      body = read_body(io, headers)
+
+      parse(head + body)
+    end
+
+    # Reads through the empty line, leaving the body unread.
+    #
+    #   io = StringIO.new("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello")
+    #   read_head(io) # => "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\n"
+    #   io.read(5)    # => "Hello"
+    def self.read_head(io)
+      # `first` stops enumeration once the header group is complete.
+      lines = io.each_line.slice_after { |line| line == Pigeon::CRLF }.first
+      head = lines&.join || ''
+
+      validate_response_presence(head)
+      raise Pigeon::ParseError, 'Missing header terminator' unless head.end_with?(Pigeon::CRLF * 2)
+
+      head
+    end
+    private_class_method :read_head
+
+    def self.read_body(io, headers)
+      if headers.any? { |name, _value| name == 'transfer-encoding' }
+        raise Pigeon::ParseError, 'Transfer-Encoding is not supported by read'
+      end
+
+      content_length = parse_content_length(headers)
+      raise Pigeon::ParseError, 'Content-Length is required by read' if content_length.nil?
+
+      body = io.read(content_length) || ''
+      raise Pigeon::ParseError, 'Body is shorter than Content-Length' if body.bytesize < content_length
+
+      body
+    end
+    private_class_method :read_body
+
     def self.parse(raw_response)
-      raise Pigeon::ParseError, "Empty response" if raw_response.empty?
+      validate_response_presence(raw_response)
 
       head, body = split_message(raw_response)
       status_line, *header_lines = head.split(Pigeon::CRLF)
@@ -38,6 +79,11 @@ module Pigeon
       [head, body]
     end
     private_class_method :split_message
+
+    def self.validate_response_presence(raw_response)
+      raise Pigeon::ParseError, 'Empty response' if raw_response.empty?
+    end
+    private_class_method :validate_response_presence
 
     def self.parse_status_line(status_line)
       http_version, status_code, reason_phrase = status_line.split(' ', 3)

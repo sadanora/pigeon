@@ -2,9 +2,45 @@
 
 require_relative 'test_helper'
 require 'pigeon'
+require 'stringio'
 
 describe Pigeon::Response do
   let(:crlf) { "\r\n" }
+
+  describe '.read' do
+    it 'reads a Content-Length-framed response from an IO' do
+      header = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.1 200 OK
+        Content-Type: text/plain
+        Content-Length: 5
+
+      HTTP
+      body = 'Hello'
+      io = StringIO.new(header + body)
+
+      response = Pigeon::Response.read(io)
+
+      assert_equal 'Hello', response.body
+    end
+
+    it 'stops reading after the declared number of body bytes' do
+      header = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.1 200 OK
+        Content-Type: text/plain
+        Content-Length: 15
+
+      HTTP
+      body = 'こんにちわ'
+      following_data = 'unread data'
+      io = StringIO.new(header + body + following_data)
+
+      response = Pigeon::Response.read(io)
+
+      assert_equal 'こんにちわ'.bytes, response.body.bytes
+      assert_equal header.bytesize + body.bytesize, io.pos
+      assert_equal 'unread data', io.read
+    end
+  end
 
   describe '#to_http' do
     it 'serializes a response' do

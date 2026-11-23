@@ -38,6 +38,8 @@ begin
   end
 
   socket.write(response.to_http)
+  puts 'Response sent. Press Enter to close the connection.'
+  $stdin.gets
 ensure
   socket.close
   server.close
