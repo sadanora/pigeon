@@ -20,21 +20,21 @@ begin
     puts "Target: #{request.target}"
     puts "Host: #{request.host}"
 
-    response = Pigeon::Response.new(
+    head = Pigeon::Response::Head.new(
       status_code: 200,
       reason_phrase: 'OK',
-      content_type: 'text/plain',
-      body: 'Hello'
+      headers: [['content-type', 'text/plain']]
     )
+    response = Pigeon::Response.new(head:, body: 'Hello')
   rescue Pigeon::ParseError => e
     warn e.message
 
-    response = Pigeon::Response.new(
+    head = Pigeon::Response::Head.new(
       status_code: 400,
       reason_phrase: 'Bad Request',
-      content_type: 'text/plain',
-      body: 'Bad Request'
+      headers: [['content-type', 'text/plain']]
     )
+    response = Pigeon::Response.new(head:, body: 'Bad Request')
   end
 
   socket.write(response.to_http)

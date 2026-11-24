@@ -15,8 +15,8 @@ begin
   socket.write(request.to_http)
 
   response = Pigeon::Response.read(socket)
-  puts "Status: #{response.status_code} #{response.reason_phrase}"
-  puts "Content-Type: #{response.content_type}"
+  puts "Status: #{response.head.status_code} #{response.head.reason_phrase}"
+  puts "Content-Type: #{response.head.content_type}"
   puts response.body
 ensure
   socket.close

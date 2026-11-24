@@ -31,7 +31,7 @@ describe Pigeon::Response do
           Content-Length: 5
 
         HTTP
-        io = StringIO.new(header + 'Hello')
+        io = StringIO.new("#{header}Hello")
 
         response = Pigeon::Response.read(io)
 
@@ -96,7 +96,7 @@ describe Pigeon::Response do
           Content-Length: abc
 
         HTTP
-        io = StringIO.new(header + 'Hello')
+        io = StringIO.new("#{header}Hello")
 
         error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.read(io)
@@ -112,7 +112,7 @@ describe Pigeon::Response do
           HTTP/1.1 200 OK
 
         HTTP
-        io = StringIO.new(header + 'Hello')
+        io = StringIO.new("#{header}Hello")
 
         error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.read(io)
@@ -128,7 +128,7 @@ describe Pigeon::Response do
           Connection: close
 
         HTTP
-        io = StringIO.new(header + 'Hello')
+        io = StringIO.new("#{header}Hello")
 
         error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.read(io)
@@ -180,7 +180,7 @@ describe Pigeon::Response do
           Content-Length: 6
 
         HTTP
-        io = StringIO.new(header + 'Hello')
+        io = StringIO.new("#{header}Hello")
 
         error = assert_raises(Pigeon::ParseError) do
           Pigeon::Response.read(io)
@@ -218,12 +218,12 @@ describe Pigeon::Response do
       body = 'Hello'
       expected = header + body
 
-      response = Pigeon::Response.new(
+      head = Pigeon::Response::Head.new(
         status_code: 200,
         reason_phrase: 'OK',
-        content_type: 'text/plain',
-        body: 'Hello'
+        headers: [['content-type', 'text/plain']]
       )
+      response = Pigeon::Response.new(head:, body: 'Hello')
 
       assert_equal expected, response.to_http
     end
@@ -239,13 +239,13 @@ describe Pigeon::Response do
       body = 'Hello'
       expected = header + body
 
-      response = Pigeon::Response.new(
+      head = Pigeon::Response::Head.new(
         http_version: 'HTTP/1.0',
         status_code: 200,
         reason_phrase: 'OK',
-        content_type: 'text/plain',
-        body: 'Hello'
+        headers: [['content-type', 'text/plain']]
       )
+      response = Pigeon::Response.new(head:, body: 'Hello')
 
       assert_equal expected, response.to_http
     end
@@ -260,13 +260,12 @@ describe Pigeon::Response do
       body = 'Hello'
       expected = header + body
 
-      response = Pigeon::Response.new(
+      head = Pigeon::Response::Head.new(
         http_version: 'HTTP/1.1',
         status_code: 200,
-        reason_phrase: 'OK',
-        content_type: nil,
-        body: 'Hello'
+        reason_phrase: 'OK'
       )
+      response = Pigeon::Response.new(head:, body: 'Hello')
 
       assert_equal expected, response.to_http
     end
@@ -274,6 +273,19 @@ describe Pigeon::Response do
 
   describe '.parse' do
     describe 'with a valid response' do
+      it 'preserves repeated response headers in their received order' do
+        raw_response = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          X-Note: first
+          x-note: second
+
+        HTTP
+
+        response = Pigeon::Response.parse(raw_response)
+
+        assert_equal [%w[x-note first], %w[x-note second]], response.head.headers
+      end
+
       it 'extracts Content-Length as an integer' do
         header = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK
@@ -287,7 +299,7 @@ describe Pigeon::Response do
 
         response = Pigeon::Response.parse(raw_response)
 
-        assert_equal 5, response.content_length
+        assert_equal 5, response.head.content_length
       end
 
       it 'accepts a response without Content-Type' do
@@ -302,7 +314,7 @@ describe Pigeon::Response do
 
         response = Pigeon::Response.parse(raw_response)
 
-        assert_nil response.content_type
+        assert_nil response.head.content_type
         assert_equal 'Hello', response.body
       end
 
@@ -318,7 +330,7 @@ describe Pigeon::Response do
 
         response = Pigeon::Response.parse(raw_response)
 
-        assert_nil response.content_length
+        assert_nil response.head.content_length
         assert_equal 'Hello', response.body
       end
 
@@ -333,7 +345,7 @@ describe Pigeon::Response do
 
         response = Pigeon::Response.parse(raw_response)
 
-        assert_equal 0, response.content_length
+        assert_equal 0, response.head.content_length
         assert_equal '', response.body
       end
 
@@ -349,9 +361,9 @@ describe Pigeon::Response do
         raw_response = header + body
 
         response = Pigeon::Response.parse(raw_response)
-        assert_equal 200, response.status_code
-        assert_equal 'OK', response.reason_phrase
-        assert_equal 'text/plain', response.content_type
+        assert_equal 200, response.head.status_code
+        assert_equal 'OK', response.head.reason_phrase
+        assert_equal 'text/plain', response.head.content_type
         assert_equal 'Hello', response.body
       end
 
@@ -366,8 +378,8 @@ describe Pigeon::Response do
         body = 'Not Found'
         response = Pigeon::Response.parse(header + body)
 
-        assert_equal 404, response.status_code
-        assert_equal 'Not Found', response.reason_phrase
+        assert_equal 404, response.head.status_code
+        assert_equal 'Not Found', response.head.reason_phrase
       end
 
       it 'preserves CRLF within the body' do
@@ -397,7 +409,7 @@ describe Pigeon::Response do
 
         response = Pigeon::Response.parse(raw_response)
 
-        assert_equal 'HTTP/1.0', response.http_version
+        assert_equal 'HTTP/1.0', response.head.http_version
       end
     end
 

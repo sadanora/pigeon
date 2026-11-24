@@ -10,6 +10,9 @@ Style/KeywordParametersOrder:
 Metrics/MethodLength:
   Enabled: false
 
+Metrics/ParameterLists:
+  Enabled: false
+
 Metrics/BlockLength:
   AllowedMethods: ['describe']
 
