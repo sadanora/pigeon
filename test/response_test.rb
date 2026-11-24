@@ -24,6 +24,20 @@ describe Pigeon::Response do
         assert_equal 'Hello', response.body
       end
 
+      it 'reads the body when the reason phrase contains 204' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 404 Error 204
+          Content-Type: text/plain
+          Content-Length: 5
+
+        HTTP
+        io = StringIO.new(header + 'Hello')
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal 'Hello', response.body
+      end
+
       it 'stops reading after the declared number of body bytes' do
         header = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK
@@ -40,6 +54,37 @@ describe Pigeon::Response do
         assert_equal 'こんにちわ'.bytes, response.body.bytes
         assert_equal header.bytesize + body.bytesize, io.pos
         assert_equal 'unread data', io.read
+      end
+
+      it 'stops at the header terminator for a 204 response' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 204 No Content
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
+
+      it 'stops at the header terminator for a 204 response with headers' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 204 No Content
+          Date: Tue, 24 Nov 2026 00:00:00 GMT
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
       end
     end
 
@@ -62,6 +107,20 @@ describe Pigeon::Response do
     end
 
     describe 'with unsupported message framing' do
+      it 'rejects a 200 response without headers' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+
+        HTTP
+        io = StringIO.new(header + 'Hello')
+
+        error = assert_raises(Pigeon::ParseError) do
+          Pigeon::Response.read(io)
+        end
+
+        assert_equal 'Content-Length is required by read', error.message
+      end
+
       it 'rejects a response without Content-Length' do
         header = <<~HTTP.gsub("\n", crlf)
           HTTP/1.1 200 OK

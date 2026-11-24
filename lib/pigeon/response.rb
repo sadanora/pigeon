@@ -11,9 +11,10 @@ module Pigeon
 
     def self.read(io)
       head = read_head(io)
-      _status_line, *header_lines = head.split(Pigeon::CRLF)
+      status_line, *header_lines = head.split(Pigeon::CRLF)
+      _http_version, status_code, _reason_phrase = parse_status_line(status_line)
       headers = parse_headers(header_lines)
-      body = read_body(io, headers)
+      body = read_body(io, headers, status_code)
 
       parse(head + body)
     end
@@ -35,7 +36,9 @@ module Pigeon
     end
     private_class_method :read_head
 
-    def self.read_body(io, headers)
+    def self.read_body(io, headers, status_code)
+      return '' if status_code == 204
+
       if headers.any? { |name, _value| name == 'transfer-encoding' }
         raise Pigeon::ParseError, 'Transfer-Encoding is not supported by read'
       end
