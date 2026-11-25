@@ -2,8 +2,9 @@
 
 module Pigeon
   class Response::Reader
-    def initialize(io)
+    def initialize(io, request_method:)
       @io = io
+      @request_method = request_method
     end
 
     def read
@@ -34,6 +35,7 @@ module Pigeon
 
     def read_body(parsed_head)
       return '' if parsed_head.bodyless?
+      return '' if @request_method == 'HEAD'
 
       raise Pigeon::ParseError, 'Transfer-Encoding is not supported by read' if parsed_head.transfer_encoding?
 

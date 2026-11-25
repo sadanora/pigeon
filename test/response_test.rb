@@ -156,6 +156,59 @@ describe Pigeon::Response do
         assert_equal header.bytesize, io.pos
         assert_equal following_data, io.read
       end
+
+      it 'does not read a body for a HEAD response with Content-Length' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io, request_method: 'HEAD')
+
+        assert_equal 5, response.head.content_length
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
+
+      it 'does not require Content-Length for a HEAD response' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io, request_method: 'HEAD')
+
+        assert_nil response.head.content_length
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
+
+      it 'reads the body when the request method is GET' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+
+        HTTP
+        body = 'Hello'
+        following_data = 'unread data'
+        io = StringIO.new(header + body + following_data)
+
+        response = Pigeon::Response.read(io, request_method: 'GET')
+
+        assert_equal 'Hello', response.body
+        assert_equal header.bytesize + body.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
     end
 
     describe 'with invalid headers' do
@@ -296,6 +349,45 @@ describe Pigeon::Response do
       response = Pigeon::Response.new(head:, body: 'Hello')
 
       assert_equal expected, response.to_http
+    end
+
+    it 'omits the body for HEAD while preserving the GET Content-Length' do
+      expected = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.1 200 OK
+        Content-Type: text/plain
+        Content-Length: 5
+        Connection: close
+
+      HTTP
+      head = Pigeon::Response::Head.new(
+        status_code: 200,
+        reason_phrase: 'OK',
+        headers: [['content-type', 'text/plain']]
+      )
+      response = Pigeon::Response.new(head:, body: 'Hello')
+
+      assert_equal expected, response.to_http(request_method: 'HEAD')
+      assert_equal 'Hello', response.body
+    end
+
+    it 'includes the body when the request method is GET' do
+      header = <<~HTTP.gsub("\n", crlf)
+        HTTP/1.1 200 OK
+        Content-Type: text/plain
+        Content-Length: 5
+        Connection: close
+
+      HTTP
+      body = 'Hello'
+      expected = header + body
+      head = Pigeon::Response::Head.new(
+        status_code: 200,
+        reason_phrase: 'OK',
+        headers: [['content-type', 'text/plain']]
+      )
+      response = Pigeon::Response.new(head:, body:)
+
+      assert_equal expected, response.to_http(request_method: 'GET')
     end
 
     it 'serializes the specified HTTP version' do

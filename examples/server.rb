@@ -37,7 +37,7 @@ begin
     response = Pigeon::Response.new(head:, body: 'Bad Request')
   end
 
-  socket.write(response.to_http)
+  socket.write(response.to_http(request_method: request&.method))
   puts 'Response sent. Press Enter to close the connection.'
   $stdin.gets
 ensure

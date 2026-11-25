@@ -14,7 +14,7 @@ socket = TCPSocket.new('127.0.0.1', 8080)
 begin
   socket.write(request.to_http)
 
-  response = Pigeon::Response.read(socket)
+  response = Pigeon::Response.read(socket, request_method: request.method)
   puts "Status: #{response.head.status_code} #{response.head.reason_phrase}"
   puts "Content-Type: #{response.head.content_type}"
   puts response.body

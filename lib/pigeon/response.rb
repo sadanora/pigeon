@@ -17,19 +17,20 @@ module Pigeon
     #                   | entity-header ) CRLF) ; Section 7.1
     #                 CRLF
     #                 [ message-body ]          ; Section 7.2
-    def to_http
+    def to_http(request_method: nil)
       headers = [
         "#{@head.http_version} #{@head.status_code} #{@head.reason_phrase}",
         ("Content-Type: #{@head.content_type}" unless @head.content_type.nil?),
         "Content-Length: #{@body.bytesize}",
         'Connection: close'
       ].compact
+      body = request_method == 'HEAD' ? '' : @body
 
-      headers.join(Pigeon::CRLF) + (Pigeon::CRLF * 2) + @body
+      headers.join(Pigeon::CRLF) + (Pigeon::CRLF * 2) + body
     end
 
-    def self.read(io)
-      Reader.new(io).read
+    def self.read(io, request_method: nil)
+      Reader.new(io, request_method:).read
     end
 
     def self.parse(raw_response)
