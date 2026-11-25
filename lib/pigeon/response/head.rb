@@ -4,7 +4,7 @@ module Pigeon
   class Response::Head
     attr_reader :http_version, :status_code, :reason_phrase, :headers, :content_length
 
-    BODY_FORBIDDEN_STATUS_CODES = [204, 304].freeze
+    BODY_FORBIDDEN_STATUS_CODES = [*(100..199), 204, 304].freeze
 
     def initialize(http_version: 'HTTP/1.1', status_code:, reason_phrase:, headers: [], content_length: nil)
       @http_version = http_version

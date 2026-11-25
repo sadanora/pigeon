@@ -120,6 +120,42 @@ describe Pigeon::Response do
         assert_equal header.bytesize, io.pos
         assert_equal following_data, io.read
       end
+
+      it 'leaves the following response unread after a 100 response' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 100 Continue
+
+        HTTP
+        following_header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 200 OK
+          Content-Type: text/plain
+          Content-Length: 5
+
+        HTTP
+        following_response = "#{following_header}Hello"
+        io = StringIO.new(header + following_response)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_response, io.read
+      end
+
+      it 'stops at the header terminator for a 199 response' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 199 Informational
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
     end
 
     describe 'with invalid headers' do
