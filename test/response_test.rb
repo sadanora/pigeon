@@ -86,6 +86,40 @@ describe Pigeon::Response do
         assert_equal header.bytesize, io.pos
         assert_equal following_data, io.read
       end
+
+      it 'stops at the header terminator for a 304 response' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 304 Not Modified
+          Date: Wed, 25 Nov 2026 00:00:00 GMT
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
+
+      it 'does not use Content-Length as the body length of a 304 response' do
+        header = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 304 Not Modified
+          Date: Wed, 25 Nov 2026 00:00:00 GMT
+          Content-Length: 5
+
+        HTTP
+        following_data = 'unread data'
+        io = StringIO.new(header + following_data)
+
+        response = Pigeon::Response.read(io)
+
+        assert_equal 5, response.head.content_length
+        assert_equal '', response.body
+        assert_equal header.bytesize, io.pos
+        assert_equal following_data, io.read
+      end
     end
 
     describe 'with invalid headers' do
