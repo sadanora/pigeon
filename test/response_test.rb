@@ -390,6 +390,57 @@ describe Pigeon::Response do
       assert_equal expected, response.to_http(request_method: 'GET')
     end
 
+    describe 'with a status code that forbids a body' do
+      it 'omits the body and Content-Length for a 100 response' do
+        expected = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 100 Continue
+          Connection: close
+
+        HTTP
+        head = Pigeon::Response::Head.new(status_code: 100, reason_phrase: 'Continue')
+        response = Pigeon::Response.new(head:, body: 'Hello')
+
+        assert_equal expected, response.to_http
+      end
+
+      it 'omits the body and Content-Length for a 199 response' do
+        expected = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 199 Informational
+          Connection: close
+
+        HTTP
+        head = Pigeon::Response::Head.new(status_code: 199, reason_phrase: 'Informational')
+        response = Pigeon::Response.new(head:, body: 'Hello')
+
+        assert_equal expected, response.to_http
+      end
+
+      it 'omits the body and Content-Length for a 204 response' do
+        expected = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 204 No Content
+          Connection: close
+
+        HTTP
+        head = Pigeon::Response::Head.new(status_code: 204, reason_phrase: 'No Content')
+        response = Pigeon::Response.new(head:, body: 'Hello')
+
+        assert_equal expected, response.to_http
+        assert_equal 'Hello', response.body
+      end
+
+      it 'omits the body and Content-Length for a 304 response' do
+        expected = <<~HTTP.gsub("\n", crlf)
+          HTTP/1.1 304 Not Modified
+          Connection: close
+
+        HTTP
+        head = Pigeon::Response::Head.new(status_code: 304, reason_phrase: 'Not Modified')
+        response = Pigeon::Response.new(head:, body: 'Hello')
+
+        assert_equal expected, response.to_http
+      end
+    end
+
     it 'serializes the specified HTTP version' do
       header = <<~HTTP.gsub("\n", crlf)
         HTTP/1.0 200 OK

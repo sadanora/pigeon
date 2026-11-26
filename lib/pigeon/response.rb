@@ -21,12 +21,11 @@ module Pigeon
       headers = [
         "#{@head.http_version} #{@head.status_code} #{@head.reason_phrase}",
         ("Content-Type: #{@head.content_type}" unless @head.content_type.nil?),
-        "Content-Length: #{@body.bytesize}",
+        content_length_header,
         'Connection: close'
       ].compact
-      body = request_method == 'HEAD' ? '' : @body
 
-      headers.join(Pigeon::CRLF) + (Pigeon::CRLF * 2) + body
+      headers.join(Pigeon::CRLF) + (Pigeon::CRLF * 2) + body_to_send(request_method:)
     end
 
     def self.read(io, request_method: nil)
@@ -35,6 +34,16 @@ module Pigeon
 
     def self.parse(raw_response)
       Parser.parse(raw_response)
+    end
+
+    private
+
+    def content_length_header
+      "Content-Length: #{@body.bytesize}" unless @head.bodyless?
+    end
+
+    def body_to_send(request_method:)
+      request_method == 'HEAD' || @head.bodyless? ? '' : @body
     end
   end
 end
